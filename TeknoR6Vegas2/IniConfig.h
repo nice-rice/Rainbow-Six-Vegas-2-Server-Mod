@@ -60,7 +60,7 @@ public:
 		
 		"ConfigR6LMGMK46","ConfigR6LMG21E","ConfigR6LMGM249SPW","ConfigR6LMGMG36", //4
 		
-		"ConfigR6ShotgunM3","ConfigR6ShotgunSpas12","ConfigR6Shotgun870MCS","ConfigR6ShotgunXM26LSS","ConfigR6Shotgun500Tactical" //5
+		"ConfigR6ShotgunM3","ConfigR6ShotgunSpas12","ConfigR6Shotgun870MCS","ConfigR6ShotgunXM26LSS","ConfigR6Shotgun500Tactical", //5
 
 		"ConfigR6SniperPSG1","ConfigR6SniperM40A1","ConfigR6SniperSV98","ConfigR6SniperScoutTactical","ConfigR6SniperSR25SD", //6
 		"ConfigR6SniperL96ArticWarfare"

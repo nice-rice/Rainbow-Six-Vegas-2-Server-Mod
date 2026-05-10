@@ -4,6 +4,7 @@
 #include "memory.h"
 #include "IniConfig.h"
 
+#include <tlhelp32.h> //Added for GetModuleBaseAddress
 #include <string>
 #include <cstring>
 
@@ -19,6 +20,7 @@ public:
 	void Init();
 	bool LoadProcess(LPCSTR Filename);
 	int RunTo(DWORD Address, DWORD Mode, DWORD Eip);
+	uintptr_t GetModuleBaseAddress(DWORD procId, const wchar_t* modName); 
 	static ModManager& GetInstance();
 
 	void SetOtherMods(bool internet, bool sound, bool graphics, bool ammo, bool gadgets);

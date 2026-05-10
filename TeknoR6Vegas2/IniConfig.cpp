@@ -11,20 +11,19 @@ IniConfig::IniConfig() {
 	CopyFile("../KellerGame/Config/DefaultWeaponsConfig.ini", "../BackupConfig/DefaultWeaponsConfig.ini", true);
 	CopyFile("../KellerGame/Config/DefaultGadgetsConfig.ini", "../BackupConfig/DefaultGadgetsConfig.ini", true);
 	CopyFile("../KellerGame/Config/PC/R6VegasServerConfig.ini", "../BackupConfig/R6VegasServerConfig.ini", true);
-	CopyFile("../KellerGame/Config/PlatformSpecificConfigPC.ini", "../BackupConfig/R6VegasServerConfig.ini", true);
+	CopyFile("../KellerGame/Config/PlatformSpecificConfigPC.ini", "../BackupConfig/PlatformSpecificConfigPC.ini", true);
 	
 }
 IniConfig::~IniConfig() {}
 
 void IniConfig::RestoreBackup() {
-	CopyFile("../BackupConfig/BaseEngine.ini", "../Engine/Config/BaseEngine.ini", false);
+	CopyFile("../BackupConfig/PCKellerEngine.ini", "../KellerGame/Config/PCKellerEngine.ini", false);
 	CopyFile("../BackupConfig/DefaultEngine.ini", "../KellerGame/Config/DefaultEngine.ini", false);
+	CopyFile("../BackupConfig/BaseEngine.ini", "../Engine/Config/BaseEngine.ini", false);
 	CopyFile("../BackupConfig/DefaultWeaponsConfig.ini", "../KellerGame/Config/DefaultWeaponsConfig.ini", false);
 	CopyFile("../BackupConfig/DefaultGadgetsConfig.ini", "../KellerGame/Config/DefaultGadgetsConfig.ini", false);
-	CopyFile( "../BackupConfig/R6VegasServerConfig.ini", "../KellerGame/Config/PC/R6VegasServerConfig.ini", false);
-	CopyFile("../BackupConfig/R6VegasServerConfig.ini", "../KellerGame/Config/PlatformSpecificConfigPC.ini", false);
-	CopyFile("../KellerGame/Config/PlatformSpecificConfigPC.ini", "../BackupConfig/R6VegasServerConfig.ini", false);
-
+	CopyFile("../BackupConfig/R6VegasServerConfig.ini", "../KellerGame/Config/PC/R6VegasServerConfig.ini", false);
+	CopyFile("../BackupConfig/PlatformSpecificConfigPC.ini", "../KellerGame/Config/PlatformSpecificConfigPC.ini", false);
 
 }
 
@@ -79,8 +78,8 @@ void IniConfig::SetSound(bool set) {
 		LPCSTR section = "ALAudio.ALAudioDevice";
 
 		for (int i = 0; i < 3; ++i) {
-			WriteINI(filename, section, "MaxChannels", "64");
-			WriteINI(filename, section, "TimeBetweenHWUpdates", "5");
+			WriteINI(filename, section, "MaxChannels", "32"); //Too high may cause issues with sounds not flagging off
+			WriteINI(filename, section, "TimeBetweenHWUpdates", "10"); //Same with updates too frequent
 			if (i == 1)
 				filename = "../KellerGame/Config/DefaultEngine.ini";
 			else
@@ -96,7 +95,7 @@ void IniConfig::SetWeapons(bool set) {
 	else {
 		LPCSTR filename = "../KellerGame/Config/DefaultWeaponsConfig.ini";
 		LPCSTR key = "m_iDefaultAmmunitionRealistic";
-		LPCSTR value = "500";
+		LPCSTR value = "500"; //Sets all ammo to 500 rounds
 		LPCSTR section = "";
 
 		for (int i = 0; i < NUM(g_aWeaponList); ++i) {
@@ -119,7 +118,7 @@ void IniConfig::SetGadgets(bool set) {
 								"R6Game.R6GadgetExplosiveBreaching","R6Game.R6GadgetExplosiveDemolition"
 		};
 		LPCSTR key = "m_iMaxAmmoRealistic";
-		LPCSTR value = "9";
+		LPCSTR value = "9"; //Sets all gadgets to 9 items regardless of difficulty
 
 		for (int i = 0; i < NUM(a_section); ++i) {
 			WriteINI(filename, a_section[i], key, value);

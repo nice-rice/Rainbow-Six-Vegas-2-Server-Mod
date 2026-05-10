@@ -19,7 +19,7 @@ ModManager::ModManager() {
 	m_iTimeLimit = 0;
 	m_iDifficulty = 2;
 	m_iRespawnCount = 1;
-	m_iTimeBetween = 60;
+	m_iTimeBetween = 180; //Seconds between rounds //increased to 3 minutes?
 
 }
 
@@ -91,7 +91,7 @@ bool ModManager::LoadProcess(LPCSTR Filename) {
 	}
 	// Mutable string required by CreateProcess
 	std::string commandLine = "../Binaries/RainbowSixVegas2_SADS.exe engine.servercommandlet " +
-		m_sCurrentMap + "?AgO=0?AgU=" +
+		m_sCurrentMap + "?Ag0=1?AgU=" + 
 		m_sServerName + "?AgP=?SrvOptionFile=R6VegasServerConfig?PW=" +
 		m_sServerPassword + "?GAME=R6Game.R6" +
 		m_sGameMode + "Game?GD=" +
@@ -146,16 +146,45 @@ int ModManager::RunTo(DWORD Address, DWORD Mode, DWORD Eip) {
 	return 1;
 }
 
+uintptr_t ModManager::GetModuleBaseAddress(DWORD procId, const wchar_t* modName)
+{
+	uintptr_t modBaseAddr = 0;
+	HANDLE hSnap = CreateToolhelp32Snapshot(TH32CS_SNAPMODULE | TH32CS_SNAPMODULE32, procId);
+
+	if (hSnap != INVALID_HANDLE_VALUE)
+	{
+		MODULEENTRY32W modEntry;
+		modEntry.dwSize = sizeof(modEntry);
+
+		if (Module32FirstW(hSnap, &modEntry))
+		{
+			do
+			{
+				if (_wcsicmp(modEntry.szModule, modName) == 0)
+				{
+					modBaseAddr = (uintptr_t)modEntry.modBaseAddr;
+					break;
+				}
+			} while (Module32NextW(hSnap, &modEntry));
+		}
+	}
+
+	CloseHandle(hSnap);
+	return modBaseAddr;
+}
 
 
 void ModManager::ModifyMemory() {
 	LPCSTR filename;
+	const wchar_t* basename;
 	PEStruct FilePEFile;
 	if (m_bIsHost) {
+		basename = L"RainbowSixVegas2_SADS.exe";
 		filename = "../Binaries/RainbowSixVegas2_SADS.exe";
 		FilePEFile = getPEFileInformation("../Binaries/RainbowSixVegas2_SADS.exe");
 	}
 	else {
+		basename = L"R6Vegas2_Game.exe";
 		filename = "../Binaries/R6Vegas2_Game.exe";
 		FilePEFile = getPEFileInformation("../Binaries/R6Vegas2_Game.exe");
 	}
@@ -187,13 +216,21 @@ void ModManager::ModifyMemory() {
 		// Player Cap
 		if (!m_bDefaultPlayers)
 		{
+
+			DWORD oldprot2 = 0;
+			DWORD temp = 0;
+			VirtualProtectEx(pi.hProcess,(LPVOID)0x11DB6834,20,PAGE_EXECUTE_READWRITE,&oldprot2);
+			//Sets possible timer limit options for mp modes
+			WriteProcessMemory(pi.hProcess, (LPVOID)0x11db6834,"\x00\x00\x00\x00\x68\x01\x00\x00\xB0\x04\x00\x00\x60\x09\x00\x00\x10\x0E\x00\x00", 20, 0);
+			VirtualProtectEx(pi.hProcess,(LPVOID)0x11DB6834,20,oldprot2,&temp);
+
+
+			//Overwrite default time limit
+			DWORD time = m_iTimeLimit;
+			WriteProcessMemory(pi.hProcess, (LPVOID)(serverBase + 0x463D6E), &time, 4, 0);
+
+
 			DWORD myval = m_iMaxPlayers;
-
-
-			//DWORD patchOffset = 0x3EFCD6;
-			//DWORD patchAddress = serverBase + patchOffset;
-			//overwrites extra compare ??
-			//WriteProcessMemory(pi.hProcess, (LPVOID)patchAddress, "\x83\xF8\x10\x90\x90\x90", 6, 0);
 
 			//Update state count (start and death)
 			WriteProcessMemory(pi.hProcess, (LPVOID)0x113B7B39, "\x90\x90\x90\x90\x90\x90\x90", 7, 0);
@@ -229,17 +266,27 @@ void ModManager::ModifyMemory() {
 		// Terrorist Count
 		if (!m_bDefaultTerrorCount)
 		{
+
 			DWORD myval = System::Convert::ToInt32(m_iTerrorCount);
 			WriteProcessMemory(pi.hProcess, (LPVOID)0x10A2B38C, "\xEB\x45\x90\x90", 4, 0);
 			WriteProcessMemory(pi.hProcess, (LPVOID)0x10A2B3D3, "\xB8\x00\x00\x00\x00\xEB\xB6", 7, 0);
 			WriteProcessMemory(pi.hProcess, (LPVOID)0x10A2B3D4, &myval, 4, 0);
 		}
+		
 	}
 	else {
 		// Player Cap
 
 		if (!m_bDefaultPlayers)
 		{
+
+			//overwite of multiplayer timelimit options
+			//DWORD oldprot2 = 0;
+			//DWORD temp = 0;
+			//VirtualProtectEx(pi.hProcess,(LPVOID)0x11db69f4,20,PAGE_EXECUTE_READWRITE,&oldprot2);
+			//WriteProcessMemory(pi.hProcess, (LPVOID)0x11db69f4,"\x00\x00\x00\x00\x68\x01\x00\x00\xB0\x04\x00\x00\x60\x09\x00\x00\x10\x0E\x00\x00", 20, 0);
+			//VirtualProtectEx(pi.hProcess,(LPVOID)0x11db69f4,20,oldprot2,&temp);
+
 
 
 			DWORD myval = m_iMaxPlayers;
@@ -270,6 +317,7 @@ void ModManager::ModifyMemory() {
 			WriteProcessMemory(pi.hProcess, (LPVOID)0x10D6395E, "\xEB\x4D", 2, 0);
 			WriteProcessMemory(pi.hProcess, (LPVOID)0x10D639AD, "\xEB\x42", 2, 0);
 			WriteProcessMemory(pi.hProcess, (LPVOID)0x10D639F1, "\x89\x46\x14\xE9\x3F\xFF\xFF\xFF", 8, 0);
+
 		}
 		// Terrorist Count
 		if (!m_bDefaultTerrorCount) {
@@ -281,8 +329,33 @@ void ModManager::ModifyMemory() {
 
 
 	}
+	
+	//Used for overwriting multiplayer time limit in heap
+	//Resume thread to allow pointer write, currently based on time, todo: poll memory address until valid
+	ResumeThread(pi.hThread);
+	Sleep(5000);
+	SuspendThread(pi.hThread);
 
+	uintptr_t moduleBase = GetModuleBaseAddress(pi.dwProcessId, basename);
+	DWORD hop1 = 0, hop2 = 0, structBase = 0;
+	uintptr_t basePtr = moduleBase + 0x01A5E5B8;
+	//hop1 = *(moduleBase + 0x01A5E5B8)
+	if (ReadProcessMemory(pi.hProcess, (LPCVOID)basePtr, &hop1, 4, 0) && hop1){
+		// hop2 = *(hop1 + 0x8)
+		if (ReadProcessMemory(pi.hProcess, (LPCVOID)(hop1 + 0x8), &hop2, 4, 0) && hop2){
+			// structBase = *(hop2 + 0x2C)
+			if (ReadProcessMemory(pi.hProcess, (LPCVOID)(hop2 + 0x2C), &structBase, 4, 0) && structBase){
+				DWORD newLimit = m_iTimeLimit;
+				DWORD newCap = newLimit;
 
+				// Write new time limit to struct
+				WriteProcessMemory(pi.hProcess, (LPVOID)(structBase + 0x14), &newLimit, 4, 0);
+				WriteProcessMemory(pi.hProcess, (LPVOID)(structBase + 0x1C), &newCap, 4, 0);
+			}
+		}
+	}
+	
+	
 	VirtualProtectEx(pi.hProcess, (LPVOID)codebase, codesize, oldprot, &newprot);
 	ResumeThread(pi.hThread);
 	WaitForSingleObject(pi.hThread, INFINITE);

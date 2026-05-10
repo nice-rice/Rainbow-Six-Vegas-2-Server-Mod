@@ -272,8 +272,9 @@ void InitializeComponent(void){
 	// 
 	this->TimeLimitDrop->DropDownStyle = System::Windows::Forms::ComboBoxStyle::DropDownList;
 	this->TimeLimitDrop->FormattingEnabled = true;
-	this->TimeLimitDrop->Items->AddRange(gcnew cli::array< System::Object^  >(5) { L"3", L"5", L"10", L"15", L"20" });
+	this->TimeLimitDrop->Items->AddRange(gcnew cli::array< System::Object^  >(5) { L"0", L"6", L"20", L"40", L"60" });
 	this->TimeLimitDrop->Location = System::Drawing::Point(9, 254);
+	this->TimeLimitDrop->MaxDropDownItems = 5;
 	this->TimeLimitDrop->Name = L"TimeLimitDrop";
 	this->TimeLimitDrop->Size = System::Drawing::Size(218, 21);
 	this->TimeLimitDrop->TabIndex = 21;
@@ -549,7 +550,10 @@ void InitializeComponent(void){
 	// TerrorCountDrop
 	// 
 	this->TerrorCountDrop->FormattingEnabled = true;
-	this->TerrorCountDrop->Items->AddRange(gcnew cli::array< System::Object^  >(5) { L"Default", L"50", L"99", L"999", L"2" });
+	this->TerrorCountDrop->Items->AddRange(gcnew cli::array< System::Object^  >(7) {
+		L"Default", L"50", L"99", L"200", L"499",
+			L"999", L"2"
+	});
 	this->TerrorCountDrop->Location = System::Drawing::Point(6, 102);
 	this->TerrorCountDrop->Name = L"TerrorCountDrop";
 	this->TerrorCountDrop->Size = System::Drawing::Size(218, 21);
@@ -603,7 +607,7 @@ void InitializeComponent(void){
 	this->FormBorderStyle = System::Windows::Forms::FormBorderStyle::FixedDialog;
 	this->MaximizeBox = false;
 	this->Name = L"Form1";
-	this->Text = L"Reaver\'s RSV2 Toolkit (nice-rice v0.5)";
+	this->Text = L"Reaver\'s RSV2 Toolkit (nice-rice v0.7)";
 	this->Load += gcnew System::EventHandler(this, &Form1::Form1_Load);
 	(cli::safe_cast<System::ComponentModel::ISupportInitialize^>(this->TitlePictureBox))->EndInit();
 	this->HostOptions->ResumeLayout(false);
