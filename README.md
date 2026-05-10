@@ -17,7 +17,7 @@ On first run, the tool backs up your game config files automatically. These back
 ## Usage
 
 ### Host Options
-Configure these if you are running or joining a server:
+Settings for running a server:
 
 - **Run SADS** > check this to launch the dedicated server instead of the normal game
 - **Server Name / Password** > set your server's name and optional password
