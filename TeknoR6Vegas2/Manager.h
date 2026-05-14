@@ -2,11 +2,13 @@
 #include <windows.h>
 #include "PE.h"
 #include "memory.h"
+#include <time.h>
 #include "IniConfig.h"
 
 #include <tlhelp32.h> //Added for GetModuleBaseAddress
 #include <string>
 #include <cstring>
+#include <functional>
 
 #define NUM(a) (sizeof(a) / sizeof(*a))
 #define Roundby1000(a) (a / 0x1000 + ((a % 0x1000) > 0 ? 1 : 0)) * 0x1000
@@ -40,8 +42,12 @@ public:
 	void SetMaxPlayers(int val);
 	void SetMap(int map);
 	void SetReadyUp(bool val);
+	void SetCycleMaps(bool cycle);
 	
-
+	//Message logging system for sending messages to the UI from this class without coupling
+	typedef void (*LogFn)(void* ctx, const char* msg);
+	void SetLogCallback(LogFn fn, void* ctx);
+	void Log(const std::string& msg);
 
 private:
 	_CONTEXT mycontext;
@@ -50,11 +56,14 @@ private:
 	
 	IniConfig* m_pIniConfig;
 
+	LogFn  m_logFn;
+	void* m_logCtx;
+
 	bool m_bStartProcess;
-	
 	bool m_bIsHost;
 	bool m_bDefaultPlayers;
 	bool m_bDefaultTerrorCount;
+	bool m_bCycleMaps;
 	std::string m_sServerName;
 	std::string m_sServerPassword;
 	std::string m_sGameMode;

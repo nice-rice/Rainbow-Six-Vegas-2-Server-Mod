@@ -9,7 +9,7 @@ PEStruct getPEFileInformation(char *filename)
 	hFile = CreateFile(filename,GENERIC_READ, FILE_SHARE_READ,NULL,
 		OPEN_EXISTING,FILE_ATTRIBUTE_NORMAL,NULL);
 	if(!hFile)
-		return pRetnStruct;
+		return pRetnStruct={NULL};
 
 	pRetnStruct.fileSize = GetFileSize(hFile,0);
 	if(!pRetnStruct.fileSize)

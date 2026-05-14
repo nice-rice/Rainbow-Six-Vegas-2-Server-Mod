@@ -220,19 +220,54 @@ void IniConfig::SetSpawnRate(int count) {
 	key = "MaxTerroristTerroHunt";
 	WriteINI(filename, section, key, value);
 }
+void IniConfig::SetGameMode(std::string mode) {
+	
+	LPCSTR filename = "../KellerGame/Config/PC/R6VegasServerConfig.ini";
+	LPCSTR section = "Engine.R6ServerOptions";
+	WriteINI(filename, section, "m_eGameMode", mode.c_str());
 
-void IniConfig::SetMap(int map) {
+}
+void IniConfig::SetMap(int map, bool cycle) {
 	std::string map_code = std::to_string((map + 1) + 200);
 
 	LPCSTR filename = "../KellerGame/Config/PC/R6VegasServerConfig.ini";
 	LPCSTR section = "Engine.R6ServerOptions";
 	LPCSTR value = map_code.c_str();
 
-	//Default R6VegasServerConfig has 20 items and 17 maps
-	for (int i = 0; i < NUM(g_aMapList)+3; ++i) {
-		std::string key_index = "m_iSelectedMaps[" + std::to_string(i) + "]";
+	if (!cycle) {
+		//Default R6VegasServerConfig has 20 items and 17 maps
+		for (int i = 0; i < NUM(g_aMapList) + 3; ++i) {
+			std::string key_index = "m_iSelectedMaps[" + std::to_string(i) + "]";
+			LPCSTR key = key_index.c_str();
+			WriteINI(filename, section, key, value);
+		}
+	}
+	else {
+		std::string key_index = "m_iSelectedMaps[0]";
 		LPCSTR key = key_index.c_str();
 		WriteINI(filename, section, key, value);
+		std::string initial_map = map_code;
+		int map_slot = 1;
+
+		for (int i = 0; i < NUM(g_aMapList); ++i) {
+			map_code = std::to_string((i + 1) + 200);
+			if (map_code == initial_map)
+				continue;
+
+			key_index = "m_iSelectedMaps[" + std::to_string(map_slot) + "]";
+			key = key_index.c_str();
+			value = map_code.c_str();
+			WriteINI(filename, section, key, value);
+			++map_slot;
+		}
+		while (map_slot < NUM(g_aMapList) + 3){
+			map_code = std::to_string( ( (rand()%(NUM(g_aMapList)-1)) + 1) + 200);
+			key_index = "m_iSelectedMaps[" + std::to_string(map_slot) + "]";
+			key = key_index.c_str();
+			value = map_code.c_str();
+			WriteINI(filename, section, key, value);
+			++map_slot;
+		}
 	}
 }
 
@@ -275,9 +310,9 @@ void IniConfig::SavePreferences(int index, int value) {
 	LPCSTR filename = "../BackupConfig/ModPreferences.ini";
 	LPCSTR section = "Preferences";
 
-	static const std::string m_aPreferences[15] = { "IsServer","GameMode","Respawns","TimeLimit",
+	static const std::string m_aPreferences[16] = { "IsServer","GameMode","Respawns","TimeLimit",
 		"ReadyUpReq","MapIndex","MaxPlayers","SpawnRate","TerroristCount","Difficulty",
-		"SetAmmo","SetGadgets", "SetInternet","SetSound","SetGraphics"
+		"SetAmmo","SetGadgets", "SetInternet","SetSound","SetGraphics", "CycleMaps"
 	};
 	WriteINI(filename, section, m_aPreferences[index].c_str(), std::to_string(value).c_str());
 

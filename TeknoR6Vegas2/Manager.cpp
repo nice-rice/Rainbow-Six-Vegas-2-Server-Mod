@@ -6,9 +6,12 @@ ModManager::ModManager() {
 
 	m_pIniConfig = new IniConfig;
 
+//	m_logFn = nullptr;
+//	m_logCtx = nullptr;
+
 	m_bStartProcess = false;
 	m_sCurrentMap = "Mb01_Import";
-
+	m_bCycleMaps = true;
 	m_bIsHost = true;
 	m_sServerName = "Default Server";
 	m_sServerPassword = "";
@@ -19,7 +22,7 @@ ModManager::ModManager() {
 	m_iTimeLimit = 0;
 	m_iDifficulty = 2;
 	m_iRespawnCount = 1;
-	m_iTimeBetween = 180; //Seconds between rounds //increased to 3 minutes?
+	m_iTimeBetween = 180; //Seconds between rounds //increased to 3min
 
 }
 
@@ -49,26 +52,7 @@ void ModManager::StartProcess(bool start) {
 
 
 }
-void ModManager::SetOtherMods(bool internet, bool sound, bool graphics, bool ammo, bool gadgets) {
-	m_pIniConfig->SetGadgets(gadgets);
-	m_pIniConfig->SetWeapons(ammo);
 
-	//Ordering is currently important, otherwise they overwrite each other
-	//If grapgics is set off, do the back up restore first
-	if (!graphics)
-		m_pIniConfig->SetGraphics(graphics);
-	if (!internet) {
-		m_pIniConfig->SetInternet(internet);
-		m_pIniConfig->SetSound(sound);
-	}
-	else {
-		m_pIniConfig->SetSound(sound);
-		m_pIniConfig->SetInternet(internet);
-	}
-	//Check again if graphics is on and skipped earlier
-	if (graphics)
-		m_pIniConfig->SetGraphics(graphics);
-}
 bool ModManager::LoadProcess(LPCSTR Filename) {
 	if (!m_bIsHost) {
 		if (!CreateProcess(Filename, // No module name (use command line). 
@@ -178,26 +162,31 @@ void ModManager::ModifyMemory() {
 	LPCSTR filename;
 	const wchar_t* basename;
 	PEStruct FilePEFile;
+	std::string version;
 	if (m_bIsHost) {
 		basename = L"RainbowSixVegas2_SADS.exe";
 		filename = "../Binaries/RainbowSixVegas2_SADS.exe";
 		FilePEFile = getPEFileInformation("../Binaries/RainbowSixVegas2_SADS.exe");
+		version = "RainbowSixVegas2_SADS.exe"; //used for logging purposes
 	}
 	else {
 		basename = L"R6Vegas2_Game.exe";
 		filename = "../Binaries/R6Vegas2_Game.exe";
 		FilePEFile = getPEFileInformation("../Binaries/R6Vegas2_Game.exe");
+		version = "R6Vegas2_Game.exe"; //used for logging purposes
 	}
 
 	if (!LoadProcess(filename))
 	{
-		//WriteLog("Unable to create process for R6Vegas2_Game.exe");
+		Log("Unable to create process for " + version);
 		return;
 	}
-	//else WriteLog("Created process for R6Vegas2_Game.exe");
+	else Log("Created process for "+version);
+
+
 	DWORD OEP = FilePEFile.image_nt_headers.OptionalHeader.AddressOfEntryPoint + FilePEFile.image_nt_headers.OptionalHeader.ImageBase;
 	if (!RunTo(OEP, 1, 0)) {
-		//	WriteLog("Process crashed on init");
+		Log("Process crashed on initialisation");
 		return;
 	}
 
@@ -213,6 +202,8 @@ void ModManager::ModifyMemory() {
 	if (m_bIsHost)
 	{
 		VirtualProtectEx(pi.hProcess, (LPVOID)codebase, codesize, 0x40, &oldprot);
+
+
 		// Player Cap
 		if (!m_bDefaultPlayers)
 		{
@@ -287,8 +278,6 @@ void ModManager::ModifyMemory() {
 			//WriteProcessMemory(pi.hProcess, (LPVOID)0x11db69f4,"\x00\x00\x00\x00\x68\x01\x00\x00\xB0\x04\x00\x00\x60\x09\x00\x00\x10\x0E\x00\x00", 20, 0);
 			//VirtualProtectEx(pi.hProcess,(LPVOID)0x11db69f4,20,oldprot2,&temp);
 
-
-
 			DWORD myval = m_iMaxPlayers;
 			//Update state count (start and death)
 			WriteProcessMemory(pi.hProcess, (LPVOID)0x113B7DB9, "\x90\x90\x90\x90\x90\x90\x90", 7, 0);
@@ -358,6 +347,42 @@ void ModManager::ModifyMemory() {
 	
 	VirtualProtectEx(pi.hProcess, (LPVOID)codebase, codesize, oldprot, &newprot);
 	ResumeThread(pi.hThread);
+	Sleep(2000);
+
+
+	//Patch to enforce Terrorist hunt when changing map after first change?
+	if (m_bCycleMaps && m_sGameMode == "CoopTerroristHunt") {
+
+		DWORD gmOldProt = 0, gmTemp = 0;
+		VirtualProtectEx(pi.hProcess, (LPVOID)0x10c99430, 13,
+			PAGE_EXECUTE_READWRITE, &gmOldProt);
+
+
+		WriteProcessMemory(pi.hProcess, (LPVOID)0x10c99430,
+			"\x8B\x44\x24\x08"          // MOV EAX, [ESP+8]
+			"\xC6\x00\x08"              // MOV byte ptr [EAX], 0x8
+			"\xB8\x01\x00\x00\x00"      // MOV EAX, 1
+			"\xC2\x08\x00",             // RET 8
+			13, 0);
+
+		BYTE verify[13] = { 0 };
+		SIZE_T bytesRead = 0;
+		if (ReadProcessMemory(pi.hProcess, (LPCVOID)0x10c99430, verify, 13, &bytesRead)) {
+			std::string msg = "GameMode patch bytes: ";
+			for (int i = 0; i < 13; i++) {
+				msg += "%02X " + std::to_string(verify[i]);
+				
+			}
+			
+		}
+
+		VirtualProtectEx(pi.hProcess, (LPVOID)0x10c99430, 13,
+			gmOldProt, &gmTemp);
+
+	}
+
+
+
 	WaitForSingleObject(pi.hThread, INFINITE);
 	while (GetThreadContext(pi.hThread, &mycontext))
 		Sleep(1000);
@@ -368,7 +393,15 @@ void ModManager::ModifyMemory() {
 	}
 	free(FilePEFile.fileImage);
 	FilePEFile.fileImage = NULL;
-	//WriteLog("Process exited");
+
+	//Get time stamp for end of process
+	time_t t;
+	time(&t);
+	struct tm lt;
+	localtime_s(&lt, &t);
+	char timebuf[32];
+	strftime(timebuf, sizeof(timebuf), "%d/%m/%y %H:%M:%S", &lt);
+	Log("Process exited at " + std::string(timebuf));
 
 }
 
@@ -379,6 +412,18 @@ std::string ModManager::GetMapName(int index) {
 void ModManager::SetGameMode(System::String^ mode) {
 	msclr::interop::marshal_context context;
 	m_sGameMode = context.marshal_as<std::string>(mode);
+
+	std::string gameMode_INI;
+	if (m_sGameMode == "CoopTerroristHunt")   gameMode_INI = "GAMEMODE_TERROHUNT";
+	else if (m_sGameMode == "AttackDefend")   gameMode_INI = "GAMEMODE_ATTACKANDDEFEND";
+	else if (m_sGameMode == "Deathmatch")     gameMode_INI = "GAMEMODE_DEATHMATCH";
+	else if (m_sGameMode == "TeamDeathmatch") gameMode_INI = "GAMEMODE_TEAMDEATHMATCH";
+	else if (m_sGameMode == "TeamLeader")     gameMode_INI = "GAMEMODE_TEAMLEADER";
+	else if (m_sGameMode == "Conquest")       gameMode_INI = "GAMEMODE_CONQUEST";
+	else if (m_sGameMode == "Sharpshooter")   gameMode_INI = "GAMEMODE_SHARPSHOOTER";
+	else if (m_sGameMode == "TeamSharpshooter") gameMode_INI = "GAMEMODE_TEAMSHARPSHOOTER";
+	else gameMode_INI = "GAMEMODE_TERROHUNT";
+	m_pIniConfig->SetGameMode(gameMode_INI);
 }
 void ModManager::SetServer(bool s, System::String^ name, System::String^ pwd) {
 	m_bIsHost = s;
@@ -444,10 +489,13 @@ void ModManager::SetMaxPlayers(int val) {
 		m_iMaxPlayers = val;
 	}
 }
+void ModManager::SetCycleMaps(bool cycle) {
+	m_bCycleMaps = cycle;
+}
 void ModManager::SetMap(int map) {
 
 	m_sCurrentMap = GetMapName(map);
-	m_pIniConfig->SetMap(map);
+	m_pIniConfig->SetMap(map,m_bCycleMaps);
 
 }
 void ModManager::SetReadyUp(bool val) {
@@ -455,8 +503,39 @@ void ModManager::SetReadyUp(bool val) {
 		m_iTimeBetween = 0;
 	}
 	else
-		m_iTimeBetween = 60;
+		m_iTimeBetween = 180;
+}
+void ModManager::SetOtherMods(bool internet, bool sound, bool graphics, bool ammo, bool gadgets) {
+	m_pIniConfig->SetGadgets(gadgets);
+	m_pIniConfig->SetWeapons(ammo);
+
+	//Ordering is currently important, otherwise they overwrite each other
+	//If grapgics is set off, do the back up restore first
+	if (!graphics)
+		m_pIniConfig->SetGraphics(graphics);
+	if (!internet) {
+		m_pIniConfig->SetInternet(internet);
+		m_pIniConfig->SetSound(sound);
+	}
+	else {
+		m_pIniConfig->SetSound(sound);
+		m_pIniConfig->SetInternet(internet);
+	}
+	//Check again if graphics is on and skipped earlier
+	if (graphics)
+		m_pIniConfig->SetGraphics(graphics);
 }
 void ModManager::SetPreferences(int index, int value) {
 	m_pIniConfig->SavePreferences(index, value);
+}
+
+// Logging system
+void ModManager::SetLogCallback(LogFn fn, void* ctx) {
+	m_logFn = fn;
+	m_logCtx = ctx;
+}
+
+void ModManager::Log(const std::string& msg) {
+	if (m_logFn)
+		m_logFn(m_logCtx, msg.c_str());
 }

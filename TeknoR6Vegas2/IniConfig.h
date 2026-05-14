@@ -25,7 +25,8 @@ public:
 	void SetGadgets(bool set);
 	void SetGraphics(bool set);
 
-	void SetMap(int map);
+	void SetMap(int map, bool cycle);
+	void SetGameMode(std::string mode);
 	void SetRespawn(bool on, int count);
 	void SetSpawnRate(int count);
 	void SetTimeLimit(int time);
